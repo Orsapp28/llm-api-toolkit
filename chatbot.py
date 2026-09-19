@@ -7,14 +7,24 @@ Your job is to extend the chat loop to handle:
 See the README for details.
 """
 
-import os
-import requests
-from dotenv import load_dotenv
 from requests.exceptions import Timeout, ConnectionError, HTTPError
+from dotenv import load_dotenv
+import requests
+import os
+"""Terminal chatbot — starter from the week16/day3 lesson.
+
+Your job is to extend the chat loop to handle:
+- /clear         -> wipe conversation history (keep just the system prompt)
+- /system <text> -> replace the system prompt and reset the conversation
+
+See the README for details.
+"""
+
 
 load_dotenv()
 
-LLM_API_URL = os.getenv("LLM_API_URL", "http://localhost:11434/v1/chat/completions")
+LLM_API_URL = os.getenv(
+    "LLM_API_URL", "http://localhost:11434/v1/chat/completions")
 LLM_API_KEY = os.getenv("LLM_API_KEY", "")
 LLM_MODEL = os.getenv("LLM_MODEL", "llama3.2")
 
@@ -34,7 +44,8 @@ def call_llm(messages):
     }
 
     try:
-        response = requests.post(LLM_API_URL, headers=headers, json=payload, timeout=60)
+        response = requests.post(
+            LLM_API_URL, headers=headers, json=payload, timeout=60)
         response.raise_for_status()
         return response.json()["choices"][0]["message"]["content"]
 
@@ -51,7 +62,8 @@ def call_llm(messages):
 def main():
     print("=== Terminal Chatbot ===")
     print(f"Using model: {LLM_MODEL}")
-    print("Type 'quit' to exit.\n")
+    print("Type 'quit' to exit.")
+    print("Commands: /clear to reset history, /system <prompt> to change role.\n")
 
     system_prompt = "You are a helpful programming assistant. Be concise and practical."
 
@@ -69,15 +81,26 @@ def main():
             print("Goodbye!")
             break
 
-        # TODO: handle /clear and /system here, BEFORE the API call.
+        # Command: /clear
+        if user_input.lower() == "/clear":
+            conversation = [{"role": "system", "content": system_prompt}]
+            print("\n(conversation cleared)\n")
+            continue
 
-        # Add the user's message to the conversation history
+        # Command: /system <new prompt>
+        if user_input.startswith("/system"):
+            new_prompt = user_input[7:].strip()
+            if not new_prompt:
+                print("\nUsage: /system <new prompt>\n")
+            else:
+                system_prompt = new_prompt
+                conversation = [{"role": "system", "content": system_prompt}]
+                print(f"\n(system prompt updated to: '{system_prompt}')\n")
+            continue
+
+        # Normal message flow: Add user turn, call LLM, add assistant turn
         conversation.append({"role": "user", "content": user_input})
-
-        # Send the ENTIRE history, not just the latest message
         reply = call_llm(conversation)
-
-        # Add the assistant's reply to the history too
         conversation.append({"role": "assistant", "content": reply})
 
         print(f"\nAssistant: {reply}\n")
